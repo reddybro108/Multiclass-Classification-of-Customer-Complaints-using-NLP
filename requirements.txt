@@ -1,0 +1,12 @@
+fastapi
+gunicorn
+joblib
+matplotlib
+numpy
+pandas
+scikit-learn
+scipy
+spacy
+torch
+torchmetrics
+uvicorn
