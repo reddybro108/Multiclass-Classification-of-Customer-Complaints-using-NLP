@@ -10,3 +10,4 @@ spacy
 torch
 torchmetrics
 uvicorn
+nltk
