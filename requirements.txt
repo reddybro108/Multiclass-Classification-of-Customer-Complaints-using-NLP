@@ -11,3 +11,8 @@ torch
 torchmetrics
 uvicorn
 nltk
+transformers
+accelerate
+datasets
+evaluate
+tokenizers
