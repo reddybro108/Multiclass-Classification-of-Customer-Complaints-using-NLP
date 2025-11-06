@@ -1,0 +1,28 @@
+# Virtual environments
+mccenv/
+venv/
+.env/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build and packaging
+*.egg-info/
+build/
+dist/
+
+# Libraries and binaries
+*.dll
+*.lib
+*.so
+*.dylib
+*.exe
+
+# Model files
+*.safetensors
+*.pt
+*.bin
+*.h5

@@ -1,14 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast
+from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
 import torch
 
-class InputText(BaseModel):
-    text: str
+# ---------- Config ----------
+MODEL_PATH = "./saved_bert_model"  # local folder or HuggingFace model name
+NUM_CLASSES = 10
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-app = FastAPI()
-
-id2department = {
+# Mapping of prediction IDs to department labels
+ID2DEPARTMENT = {
     0: "Credit Reporting, Credit Repair, Consumer Reports",
     1: "Debt Collection",
     2: "Mortgage",
@@ -21,37 +22,67 @@ id2department = {
     9: "Other Financial Service"
 }
 
-num_classes = 10
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# ---------- Model & Tokenizer Load ----------
+def load_model_and_tokenizer(model_path: str):
+    try:
+        tokenizer = DistilBertTokenizerFast.from_pretrained(model_path, local_files_only=True)
+        model = DistilBertForSequenceClassification.from_pretrained(model_path, local_files_only=True)
+        print(f"✅ Loaded model & tokenizer from local path: {model_path}")
+    except Exception:
+        print(f"⚠️ Local model not found or incomplete at {model_path}. Falling back to HuggingFace hub.")
+        tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
+        model = DistilBertForSequenceClassification.from_pretrained("distilbert-base-uncased")
+    return tokenizer, model
 
-# Load your pretrained and fine-tuned DistilBERT model and tokenizer
-tokenizer = DistilBertTokenizerFast.from_pretrained("./saved_bert_model")
-model = DistilBertForSequenceClassification.from_pretrained("./saved_bert_model")
-
-model.to(device)
+tokenizer, model = load_model_and_tokenizer(MODEL_PATH)
+model.to(DEVICE)
 model.eval()
+
+# ---------- FastAPI ----------
+app = FastAPI(title="Complaint Classifier API", version="1.0")
+
+class InputText(BaseModel):
+    text: str
+
+@app.get("/")
+def root():
+    return {"message": "Complaint Classification API is running."}
 
 @app.post("/predict")
 async def predict(input: InputText):
-    inputs = tokenizer(
-        input.text,
-        return_tensors="pt",
-        truncation=True,
-        padding=True,
-        max_length=128,
-    )
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    if not input.text.strip():
+        raise HTTPException(status_code=400, detail="Input text cannot be empty.")
 
-    with torch.no_grad():
-        outputs = model(**inputs)
-        probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-        pred_idx = torch.argmax(probs, dim=1).item()
-        confidence = probs[0][pred_idx].item()
+    try:
+        # Tokenization
+        inputs = tokenizer(
+            input.text,
+            return_tensors="pt",
+            truncation=True,
+            padding=True,
+            max_length=128,
+        )
+        inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
 
-    label = id2department.get(pred_idx, str(pred_idx))
+        # Inference
+        with torch.no_grad():
+            outputs = model(**inputs)
+            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            pred_idx = torch.argmax(probs, dim=1).item()
+            confidence = probs[0][pred_idx].item()
 
-    return {
-        "label_id": pred_idx,
-        "label": label,
-        "confidence": confidence,
-    }
+        label = ID2DEPARTMENT.get(pred_idx, str(pred_idx))
+
+        return {
+            "label_id": pred_idx,
+            "label": label,
+            "confidence": round(confidence, 4),
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+# ---------- Run with Uvicorn ----------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, workers=1)
