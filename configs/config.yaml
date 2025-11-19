@@ -1,0 +1,37 @@
+# Configuration for the Customer Complaint Classification project
+
+# 1. Data Configuration
+data:
+  # Path to the raw CSV file from the data directory
+  raw_data_path: "data/complaints_10k.csv"
+  # Name of the column containing the text to be classified
+  narrative_column: "Consumer complaint narrative"
+  # Name of the target column for classification
+  target_column: "Issue"
+  # Train/test split ratio
+  test_split_size: 0.2
+
+# 2. Model Configuration
+model:
+  # Name or path of the pre-trained transformer model to use
+  name: "bert-base-uncased"
+  # Maximum sequence length for the tokenizer
+  max_length: 512
+
+# 3. Training Configuration
+training:
+  # Number of epochs to train for
+  epochs: 3
+  # Batch size for training and evaluation
+  batch_size: 16
+  # Learning rate for the optimizer
+  learning_rate: 2.0e-5
+  # Random seed for reproducibility
+  random_seed: 42
+  # Directory to save the trained model and results
+  output_dir: "models/bert_complaint_classifier"
+
+# 4. Preprocessing Configuration
+preprocessing:
+    # Minimum token length to keep
+    min_token_length: 3

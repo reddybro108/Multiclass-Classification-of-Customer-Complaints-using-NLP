@@ -16,3 +16,5 @@ accelerate
 datasets
 evaluate
 tokenizers
+pyyaml
+ruff
